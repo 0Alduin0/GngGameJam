@@ -3,50 +3,71 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerMovement : MonoBehaviour
 {
-    [Header("Movement Settings")]
     public float moveSpeed = 5f;
-    public float jumpForce = 8f;
-
-    [Header("Ground Check")]
-    public Transform groundCheck;
-    public float checkRadius = 0.2f;
-    public LayerMask groundLayer;
 
     private Rigidbody2D rb;
-    private float moveInput;
-    private bool isGrounded;
     private bool facingRight = true;
 
-    void Start()
+    public Animator animator;
+
+    // Combo değişkenleri
+    private int comboStep = 0; // 0 = idle, 1 = attack1, 2 = attack2
+    private float comboResetTime = 1f; // iki saldırı arasında izin verilen max süre
+    private float comboTimer = 0f;
+
+    void Awake()
     {
+        animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody2D>();
     }
 
     void Update()
     {
-        // Hareket girdisini al
-        moveInput = Input.GetAxisRaw("Horizontal");
+        Movement();
+        Attack();
 
-        // Z�plama
-        if (Input.GetButtonDown("Jump") && isGrounded)
+        // Combo sıfırlama
+        if (comboStep > 0)
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+            comboTimer -= Time.deltaTime;
+            if (comboTimer <= 0)
+            {
+                comboStep = 0;
+            }
         }
-
-        // Karakterin y�n�n� �evir
-        if (facingRight == false && moveInput > 0)
-            Flip();
-        else if (facingRight == true && moveInput < 0)
-            Flip();
     }
 
-    void FixedUpdate()
+    private void Movement()
     {
-        // Zemin kontrol�
-        isGrounded = Physics2D.OverlapCircle(groundCheck.position, checkRadius, groundLayer);
+        float moveInputX = Input.GetAxisRaw("Horizontal");
+        float moveInputY = Input.GetAxisRaw("Vertical");
 
-        // Hareket uygula
-        rb.linearVelocity = new Vector2(moveInput * moveSpeed, rb.linearVelocity.y);
+        if (!facingRight && moveInputX > 0)
+            Flip();
+        else if (facingRight && moveInputX < 0)
+            Flip();
+
+        animator.SetFloat("Run", (moveInputX != 0 || moveInputY != 0) ? 1 : 0);
+
+        rb.linearVelocity = new Vector3(moveInputX * moveSpeed, moveInputY * moveSpeed, 0);
+    }
+
+    private void Attack()
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (comboStep == 0)
+            {
+                animator.SetTrigger("Attack");
+                comboStep = 1;
+                comboTimer = comboResetTime;
+            }
+            else if (comboStep == 1)
+            {
+                animator.SetTrigger("Attack2");
+                comboStep = 0; // combo bitti
+            }
+        }
     }
 
     void Flip()
