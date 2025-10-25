@@ -6,3 +6,10 @@ NativeFormatImporter:
   userData: 
   assetBundleName: 
   assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 227974
+  packageName: Dialogator
+  packageVersion: 1.1
+  assetPath: Assets/Settings/Renderer2D.asset
+  uploadId: 547660
