@@ -16,7 +16,7 @@ public class PlayerMovement : MonoBehaviour
     public int axeCount = 5;
     public GameObject axePrefab;
     public GameObject axeSpawnPoint;
-    public float nextThrowAxe = 2f;
+    public float nextThrowAxe = 1.5f;
 
 
 
@@ -70,13 +70,13 @@ public class PlayerMovement : MonoBehaviour
     {
         nextThrowAxe -= Time.deltaTime;
 
-        if (Input.GetMouseButtonDown(1) && axeCount > 0)
+        if (Input.GetMouseButtonDown(1) && axeCount > 0 && nextThrowAxe <= 0)
         {
             GameObject throwedAxe = Instantiate(axePrefab, axeSpawnPoint.transform.position, Quaternion.identity);
             Rigidbody2D axeRb = throwedAxe.GetComponent<Rigidbody2D>();
             axeRb.AddForce(new Vector2(facingRight ? 1 : -1, 0) * 500f);
             axeCount--;
-            nextThrowAxe = 2f;
+            nextThrowAxe = 1.5f;
         }
     }
 
