@@ -12,20 +12,53 @@ public class NPCAjanKontrol : MonoBehaviour
     [SerializeField] private float tetiklemeAlaniYaricap = 10f;
     [SerializeField] private float saldiriMesafesi = 2f;
 
-    [Header("Baþlangýç Pozisyonu")]
-    private Vector3 baslangicPozisyonu;
+    [Header("Devriye Noktasý")]
+    [SerializeField] private Transform devriyeNoktasi;
+    [SerializeField] private float devriyeNoktasiTolerans = 0.5f;
 
+    [Header("Hareket Ayarlarý")]
+    [SerializeField] private float hareketHizi = 3.5f; // YENÝ: Hareket hýzý
+    [SerializeField] private float hareketEsikDegeri = 0.1f;
+
+    private Vector3 baslangicPozisyonu;
     private bool oyuncuAlaniIcinde = false;
     private bool saldiriyor = false;
+    private bool devriyeNoktasinaGidiyor = false;
+    private bool ilkBaslangic = true;
 
     void Start()
     {
-        // NavMeshAgent'i 2D için yapýlandýr
+        // NavMeshAgent'i al ve kontrol et
         if (agent == null)
             agent = GetComponent<NavMeshAgent>();
 
-        agent.updateRotation = false;
-        agent.updateUpAxis = false;
+        if (agent != null)
+        {
+            // NavMeshAgent'i 2D için yapýlandýr
+            agent.updateRotation = false;
+            agent.updateUpAxis = false;
+
+            // YENÝ: Speed'i zorla ayarla
+            agent.speed = hareketHizi;
+            agent.acceleration = 8f;
+            agent.angularSpeed = 120f;
+
+            // Agent'ý NavMesh'e yerleþtir
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(transform.position, out hit, 10f, NavMesh.AllAreas))
+            {
+                transform.position = hit.position;
+                agent.enabled = true;
+            }
+            else
+            {
+                Debug.LogError(gameObject.name + " NavMesh üzerine yerleþtirilemedi!");
+            }
+        }
+        else
+        {
+            Debug.LogError(gameObject.name + " üzerinde NavMeshAgent componenti bulunamadý!");
+        }
 
         // Animator yoksa bul
         if (animator == null)
@@ -45,7 +78,39 @@ public class NPCAjanKontrol : MonoBehaviour
 
     void Update()
     {
-        if (oyuncu == null) return;
+        // Temel kontroller
+        if (agent == null)
+        {
+            Debug.LogWarning("Agent bulunamadý!");
+            return;
+        }
+
+        if (!agent.isOnNavMesh)
+        {
+            Debug.LogWarning("Agent NavMesh üzerinde deðil!");
+            return;
+        }
+
+        if (oyuncu == null)
+        {
+            Debug.LogWarning("Oyuncu bulunamadý!");
+            return;
+        }
+
+        // DEBUG: Agent durumunu göster
+        Debug.Log($"Agent Speed: {agent.speed}, Velocity: {agent.velocity.magnitude}, isStopped: {agent.isStopped}");
+
+        // Ýlk baþlangýçta devriye noktasýna git
+        if (ilkBaslangic && devriyeNoktasi != null)
+        {
+            ilkBaslangic = false;
+            devriyeNoktasinaGidiyor = true;
+            agent.isStopped = false;
+            agent.speed = hareketHizi; // Speed'i tekrar ayarla
+            agent.SetDestination(devriyeNoktasi.position);
+
+            Debug.Log("Ýlk baþlangýç: Devriye noktasýna gidiyor! Hedef: " + devriyeNoktasi.position);
+        }
 
         float oyuncuyaMesafe = Vector2.Distance(
             new Vector2(transform.position.x, transform.position.y),
@@ -55,6 +120,8 @@ public class NPCAjanKontrol : MonoBehaviour
         // Oyuncu tetikleme alaný içinde mi kontrol et
         if (oyuncuyaMesafe <= tetiklemeAlaniYaricap)
         {
+            devriyeNoktasinaGidiyor = false;
+
             if (!oyuncuAlaniIcinde)
             {
                 oyuncuAlaniIcinde = true;
@@ -68,8 +135,12 @@ public class NPCAjanKontrol : MonoBehaviour
                 {
                     saldiriyor = true;
                     agent.isStopped = true;
-                    animator.SetBool("Kos", false);
-                    animator.SetBool("Saldir", true);
+
+                    if (animator != null)
+                    {
+                        animator.SetBool("Kos", false);
+                        animator.SetBool("Saldir", true);
+                    }
                 }
             }
             else
@@ -78,12 +149,16 @@ public class NPCAjanKontrol : MonoBehaviour
                 if (saldiriyor)
                 {
                     saldiriyor = false;
-                    agent.isStopped = false;
-                    animator.SetBool("Saldir", false);
                 }
 
-                animator.SetBool("Kos", true);
-                agent.SetDestination(oyuncu.position);
+                agent.isStopped = false;
+                agent.speed = hareketHizi;
+
+                // SetDestination sadece agent aktifse çaðrýlýr
+                if (agent.enabled && agent.isOnNavMesh)
+                {
+                    agent.SetDestination(oyuncu.position);
+                }
             }
         }
         else
@@ -93,23 +168,77 @@ public class NPCAjanKontrol : MonoBehaviour
             {
                 oyuncuAlaniIcinde = false;
                 saldiriyor = false;
-                agent.isStopped = false;
+
+                // Devriye noktasýna git
+                if (devriyeNoktasi != null && agent.enabled && agent.isOnNavMesh)
+                {
+                    devriyeNoktasinaGidiyor = true;
+                    agent.isStopped = false;
+                    agent.speed = hareketHizi;
+                    agent.SetDestination(devriyeNoktasi.position);
+
+                    Debug.Log("Devriye noktasýna gidiyor! Hedef: " + devriyeNoktasi.position);
+                }
+            }
+
+            // Devriye noktasýna gidiyorsa ve ulaþtýysa
+            if (devriyeNoktasinaGidiyor && devriyeNoktasi != null)
+            {
+                float devriyeMesafe = Vector2.Distance(
+                    new Vector2(transform.position.x, transform.position.y),
+                    new Vector2(devriyeNoktasi.position.x, devriyeNoktasi.position.y)
+                );
+
+                // Devriye noktasýna ulaþtý mý?
+                if (devriyeMesafe <= devriyeNoktasiTolerans)
+                {
+                    devriyeNoktasinaGidiyor = false;
+                    agent.isStopped = true;
+
+                    Debug.Log("Devriye noktasýna ulaþtý!");
+                }
+                else
+                {
+                    agent.isStopped = false;
+                    agent.speed = hareketHizi;
+                }
+            }
+            else if (!devriyeNoktasinaGidiyor)
+            {
+                agent.isStopped = true;
+            }
+        }
+
+        // HAREKET BAZLI ANÝMASYON (velocity ile senkronize)
+        float currentSpeed = agent.velocity.magnitude;
+
+        if (animator != null)
+        {
+            if (saldiriyor)
+            {
+                // Saldýrý animasyonu
+                animator.SetBool("Kos", false);
+                animator.SetBool("Saldir", true);
+            }
+            else if (currentSpeed > hareketEsikDegeri)
+            {
+                // Hareket ediyor - Koþ animasyonu
+                animator.SetBool("Saldir", false);
+                animator.SetBool("Kos", true);
+            }
+            else
+            {
+                // Durmuþ - Idle animasyonu
                 animator.SetBool("Kos", false);
                 animator.SetBool("Saldir", false);
-
-                // Baþlangýç pozisyonuna dön (isteðe baðlý)
-                // agent.SetDestination(baslangicPozisyonu);
             }
         }
 
         // 2D için sprite'ý çevir
-        if (agent.velocity.x != 0)
-        {
-            if (agent.velocity.x > 0)
-                transform.localScale = new Vector3(1, 1, 1);
-            else
-                transform.localScale = new Vector3(-1, 1, 1);
-        }
+        if (agent.velocity.x > 0.1f)
+            transform.localScale = new Vector3(1, 1, 1);
+        else if (agent.velocity.x < -0.1f)
+            transform.localScale = new Vector3(-1, 1, 1);
     }
 
     // Gizmos ile alanlarý görselleþtir
@@ -122,5 +251,13 @@ public class NPCAjanKontrol : MonoBehaviour
         // Saldýrý mesafesi
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, saldiriMesafesi);
+
+        // Devriye noktasý
+        if (devriyeNoktasi != null)
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawWireSphere(devriyeNoktasi.position, devriyeNoktasiTolerans);
+            Gizmos.DrawLine(transform.position, devriyeNoktasi.position);
+        }
     }
 }
