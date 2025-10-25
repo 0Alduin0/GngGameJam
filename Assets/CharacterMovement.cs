@@ -3,20 +3,27 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerMovement : MonoBehaviour
 {
-    [Header("Movement Settings")]
     public float moveSpeed = 5f;
-    public float jumpForce = 8f;
-
-    [Header("Ground Check")]
-    public Transform groundCheck;
-    public float checkRadius = 0.2f;
-    public LayerMask groundLayer;
 
     private Rigidbody2D rb;
-    private float moveInput;
-    private bool isGrounded;
+
     private bool facingRight = true;
 
+    public Animator animator;
+
+    public float nextAttackTime = 0.7f;
+
+    public int axeCount = 5;
+    public GameObject axePrefab;
+    public GameObject axeSpawnPoint;
+    public float nextThrowAxe = 2f;
+
+
+
+    private void Awake()
+    {
+        animator = GetComponent<Animator>();
+    }
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -24,30 +31,55 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        // Hareket girdisini al
-        moveInput = Input.GetAxisRaw("Horizontal");
+        Movement();
 
-        // Z�plama
-        if (Input.GetButtonDown("Jump") && isGrounded)
-        {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
-        }
+        Attack();
+
+        ThrowAxe();
+
+    }
+    private void Movement()
+    {
+        // Hareket girdisini al
+        float moveInputX = Input.GetAxisRaw("Horizontal");
+        float moveInputY = Input.GetAxisRaw("Vertical");
 
         // Karakterin y�n�n� �evir
-        if (facingRight == false && moveInput > 0)
+        if (facingRight == false && moveInputX > 0)
             Flip();
-        else if (facingRight == true && moveInput < 0)
+        else if (facingRight == true && moveInputX < 0)
             Flip();
+        if (moveInputX != 0 || moveInputY != 0)
+            animator.SetFloat("Run", 1);
+        else
+            animator.SetFloat("Run", 0);
+        rb.linearVelocity = new Vector3(moveInputX * moveSpeed, moveInputY * moveSpeed, 0);
     }
 
-    void FixedUpdate()
+    private void Attack()
     {
-        // Zemin kontrol�
-        isGrounded = Physics2D.OverlapCircle(groundCheck.position, checkRadius, groundLayer);
-
-        // Hareket uygula
-        rb.linearVelocity = new Vector2(moveInput * moveSpeed, rb.linearVelocity.y);
+        nextAttackTime -= Time.deltaTime;
+        if (Input.GetMouseButtonDown(0) && nextAttackTime <= 0)
+        {
+            animator.SetTrigger("Attack");
+            nextAttackTime = 0.7f;
+        }
     }
+
+    private void ThrowAxe()
+    {
+        nextThrowAxe -= Time.deltaTime;
+
+        if (Input.GetMouseButtonDown(1) && axeCount > 0)
+        {
+            GameObject throwedAxe = Instantiate(axePrefab, axeSpawnPoint.transform.position, Quaternion.identity);
+            Rigidbody2D axeRb = throwedAxe.GetComponent<Rigidbody2D>();
+            axeRb.AddForce(new Vector2(facingRight ? 1 : -1, 0) * 500f);
+            axeCount--;
+            nextThrowAxe = 2f;
+        }
+    }
+
 
     void Flip()
     {
