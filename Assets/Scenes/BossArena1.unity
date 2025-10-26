@@ -261,14 +261,38 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 644480453238549739, guid: d289560f01127de469d6540f93d063ec, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 54.619263
+      objectReference: {fileID: 0}
+    - target: {fileID: 644480453238549739, guid: d289560f01127de469d6540f93d063ec, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -10.203064
+      objectReference: {fileID: 0}
     - target: {fileID: 934237733616007732, guid: d289560f01127de469d6540f93d063ec, type: 3}
       propertyPath: m_SortingOrder
       value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 1310087583027705464, guid: d289560f01127de469d6540f93d063ec, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 54.619263
+      objectReference: {fileID: 0}
+    - target: {fileID: 1310087583027705464, guid: d289560f01127de469d6540f93d063ec, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -10.203064
       objectReference: {fileID: 0}
     - target: {fileID: 3744178208613592306, guid: d289560f01127de469d6540f93d063ec, type: 3}
       propertyPath: animator
       value: 
       objectReference: {fileID: 756475176}
+    - target: {fileID: 3825272020539714271, guid: d289560f01127de469d6540f93d063ec, type: 3}
+      propertyPath: m_FillAmount
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3943301308201409495, guid: d289560f01127de469d6540f93d063ec, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 6492033987514898703, guid: d289560f01127de469d6540f93d063ec, type: 3}
       propertyPath: m_Name
       value: MainCharacter
@@ -908,9 +932,10 @@ MonoBehaviour:
   hareketHizi: 1.89
   hareketEsikDegeri: 0.1
   maxCan: 100
-  mevcutCan: 0
   baltaHasari: 20
   stunSuresi: 3
+  saldiriHasari: 10
+  saldiriBeklemeSuresi: 1.5
 --- !u!195 &1316035439
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -971,7 +996,7 @@ PolygonCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 0.42, y: 0.76}
+    oldSize: {x: 0.58, y: 0.93}
     newSize: {x: 0.58, y: 0.93}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
