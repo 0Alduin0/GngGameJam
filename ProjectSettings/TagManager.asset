@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 3
   tags:
   - interactionPoint
+  - Balta
   layers:
   - Default
   - TransparentFX

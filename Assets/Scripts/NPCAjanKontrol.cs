@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.AI;
+using System.Collections;
 
 public class NPCAjanKontrol : MonoBehaviour
 {
@@ -17,17 +18,28 @@ public class NPCAjanKontrol : MonoBehaviour
     [SerializeField] private float devriyeNoktasiTolerans = 0.5f;
 
     [Header("Hareket Ayarlarý")]
-    [SerializeField] private float hareketHizi = 3.5f; // YENÝ: Hareket hýzý
+    [SerializeField] private float hareketHizi = 3.5f;
     [SerializeField] private float hareketEsikDegeri = 0.1f;
+
+    [Header("Saðlýk ve Hasar")]
+    [SerializeField] private float maxCan = 100f;
+    [SerializeField] private float mevcutCan;
+    [SerializeField] private float baltaHasari = 20f;
+    [SerializeField] private float stunSuresi = 3f;
 
     private Vector3 baslangicPozisyonu;
     private bool oyuncuAlaniIcinde = false;
     private bool saldiriyor = false;
     private bool devriyeNoktasinaGidiyor = false;
     private bool ilkBaslangic = true;
+    private bool sersemlemis = false; // YENÝ: Stun durumu
+    private bool oldu = false; // YENÝ: Ölü durumu
 
     void Start()
     {
+        // Can baþlangýç deðeri
+        mevcutCan = maxCan;
+
         // NavMeshAgent'i al ve kontrol et
         if (agent == null)
             agent = GetComponent<NavMeshAgent>();
@@ -38,7 +50,6 @@ public class NPCAjanKontrol : MonoBehaviour
             agent.updateRotation = false;
             agent.updateUpAxis = false;
 
-            // YENÝ: Speed'i zorla ayarla
             agent.speed = hareketHizi;
             agent.acceleration = 8f;
             agent.angularSpeed = 120f;
@@ -78,6 +89,24 @@ public class NPCAjanKontrol : MonoBehaviour
 
     void Update()
     {
+        // Ölü veya sersemlemiþse hareketi engelle
+        if (oldu || sersemlemis)
+        {
+            if (agent != null && agent.isOnNavMesh)
+            {
+                agent.isStopped = true;
+                agent.velocity = Vector3.zero;
+            }
+
+            if (animator != null && sersemlemis)
+            {
+                animator.SetBool("Kos", false);
+                animator.SetBool("Saldir", false);
+            }
+
+            return;
+        }
+
         // Temel kontroller
         if (agent == null)
         {
@@ -106,7 +135,7 @@ public class NPCAjanKontrol : MonoBehaviour
             ilkBaslangic = false;
             devriyeNoktasinaGidiyor = true;
             agent.isStopped = false;
-            agent.speed = hareketHizi; // Speed'i tekrar ayarla
+            agent.speed = hareketHizi;
             agent.SetDestination(devriyeNoktasi.position);
 
             Debug.Log("Ýlk baþlangýç: Devriye noktasýna gidiyor! Hedef: " + devriyeNoktasi.position);
@@ -154,7 +183,6 @@ public class NPCAjanKontrol : MonoBehaviour
                 agent.isStopped = false;
                 agent.speed = hareketHizi;
 
-                // SetDestination sadece agent aktifse çaðrýlýr
                 if (agent.enabled && agent.isOnNavMesh)
                 {
                     agent.SetDestination(oyuncu.position);
@@ -189,7 +217,6 @@ public class NPCAjanKontrol : MonoBehaviour
                     new Vector2(devriyeNoktasi.position.x, devriyeNoktasi.position.y)
                 );
 
-                // Devriye noktasýna ulaþtý mý?
                 if (devriyeMesafe <= devriyeNoktasiTolerans)
                 {
                     devriyeNoktasinaGidiyor = false;
@@ -209,26 +236,23 @@ public class NPCAjanKontrol : MonoBehaviour
             }
         }
 
-        // HAREKET BAZLI ANÝMASYON (velocity ile senkronize)
+        // HAREKET BAZLI ANÝMASYON
         float currentSpeed = agent.velocity.magnitude;
 
         if (animator != null)
         {
             if (saldiriyor)
             {
-                // Saldýrý animasyonu
                 animator.SetBool("Kos", false);
                 animator.SetBool("Saldir", true);
             }
             else if (currentSpeed > hareketEsikDegeri)
             {
-                // Hareket ediyor - Koþ animasyonu
                 animator.SetBool("Saldir", false);
                 animator.SetBool("Kos", true);
             }
             else
             {
-                // Durmuþ - Idle animasyonu
                 animator.SetBool("Kos", false);
                 animator.SetBool("Saldir", false);
             }
@@ -239,6 +263,128 @@ public class NPCAjanKontrol : MonoBehaviour
             transform.localScale = new Vector3(1, 1, 1);
         else if (agent.velocity.x < -0.1f)
             transform.localScale = new Vector3(-1, 1, 1);
+    }
+
+    // YENÝ: Balta çarpma kontrolü
+    void OnCollisionEnter2D(Collision2D collision)
+    {
+        // Balta objesi ile çarpýþma kontrolü
+        if (collision.gameObject.CompareTag("Balta") || collision.gameObject.name.Contains("Balta"))
+        {
+            HasarAl(baltaHasari);
+        }
+    }
+
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        // Alternatif: Trigger bazlý çarpýþma
+        if (other.CompareTag("Balta") || other.name.Contains("Balta"))
+        {
+            HasarAl(baltaHasari);
+        }
+    }
+
+    // YENÝ: Hasar alma methodu
+    public void HasarAl(float hasar)
+    {
+        if (oldu) return; // Zaten ölüyse hasar alma
+
+        mevcutCan -= hasar;
+        Debug.Log($"{gameObject.name} hasar aldý! Kalan can: {mevcutCan}");
+
+        // Can sýfýrlanýrsa öl
+        if (mevcutCan <= 0)
+        {
+            mevcutCan = 0;
+            Ol();
+        }
+        else
+        {
+            // Hala canlýysa sersemlet (stun)
+            StartCoroutine(SersemletmeEfekti());
+        }
+    }
+
+    // YENÝ: Sersemletme efekti (3 saniye hareket edememe)
+    private IEnumerator SersemletmeEfekti()
+    {
+        sersemlemis = true;
+        Debug.Log($"{gameObject.name} sersemletildi! {stunSuresi} saniye hareket edemeyecek.");
+
+        // Agent'ý durdur
+        if (agent != null && agent.isOnNavMesh)
+        {
+            agent.isStopped = true;
+            agent.velocity = Vector3.zero;
+        }
+
+        // Opsiyonel: Sersemletme animasyonu
+        if (animator != null)
+        {
+            animator.SetBool("Kos", false);
+            animator.SetBool("Saldir", false);
+            // animator.SetTrigger("Sersem"); // Eðer sersemletme animasyonunuz varsa
+        }
+
+        // Opsiyonel: Görsel efekt (renk deðiþimi)
+        SpriteRenderer sprite = GetComponent<SpriteRenderer>();
+        Color originalColor = Color.white;
+        if (sprite != null)
+        {
+            originalColor = sprite.color;
+            sprite.color = Color.gray; // Gri renk vererek sersemletmeyi göster
+        }
+
+        // Belirlenen süre kadar bekle
+        yield return new WaitForSeconds(stunSuresi);
+
+        // Sersemletmeyi kaldýr
+        sersemlemis = false;
+        Debug.Log($"{gameObject.name} sersemletmeden kurtuldu!");
+
+        // Rengi eski haline getir
+        if (sprite != null)
+        {
+            sprite.color = originalColor;
+        }
+
+        // Agent'ý yeniden aktif et
+        if (agent != null && agent.isOnNavMesh)
+        {
+            agent.isStopped = false;
+        }
+    }
+
+    // YENÝ: Ölüm methodu
+    private void Ol()
+    {
+        oldu = true;
+        Debug.Log($"{gameObject.name} öldü!");
+
+        // Agent'ý durdur
+        if (agent != null && agent.isOnNavMesh)
+        {
+            agent.isStopped = true;
+            agent.enabled = false;
+        }
+
+        // Ölüm animasyonu
+        if (animator != null)
+        {
+            animator.SetBool("Kos", false);
+            animator.SetBool("Saldir", false);
+            animator.SetTrigger("Ol"); // Eðer ölüm animasyonunuz varsa
+        }
+
+        // Collider'ý kapat
+        Collider2D col = GetComponent<Collider2D>();
+        if (col != null)
+        {
+            col.enabled = false;
+        }
+
+        // 2 saniye sonra objeyi yok et (veya devre dýþý býrak)
+        Destroy(gameObject, 2f);
     }
 
     // Gizmos ile alanlarý görselleþtir
