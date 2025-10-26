@@ -77,6 +77,7 @@ public class PlayerMovement : MonoBehaviour
             axeRb.AddForce(new Vector2(facingRight ? 1 : -1, 0) * 500f);
             axeCount--;
             nextThrowAxe = 1.5f;
+            Destroy(throwedAxe, 10f);
         }
     }
 

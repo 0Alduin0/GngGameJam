@@ -23,59 +23,58 @@ public class NPCAjanKontrol : MonoBehaviour
 
     [Header("Saðlýk ve Hasar")]
     [SerializeField] private float maxCan = 100f;
-    [SerializeField] private float mevcutCan;
     [SerializeField] private float baltaHasari = 20f;
     [SerializeField] private float stunSuresi = 3f;
+    [SerializeField] private float saldiriHasari = 10f;
+    [SerializeField] private float saldiriBeklemeSuresi = 1.5f;
 
+    // Özel deðiþkenler
+    private float mevcutCan;
     private Vector3 baslangicPozisyonu;
     private bool oyuncuAlaniIcinde = false;
     private bool saldiriyor = false;
     private bool devriyeNoktasinaGidiyor = false;
     private bool ilkBaslangic = true;
-    private bool sersemlemis = false; // YENÝ: Stun durumu
-    private bool oldu = false; // YENÝ: Ölü durumu
+    private bool sersemlemis = false;
+    private bool oldu = false;
+    private bool saldiriYapabiliyor = true;
+    private Health Health;
+
+    // Cache'lenmiþ deðiþkenler
+    private SpriteRenderer spriteRenderer;
+    private Collider2D col;
+    private static readonly int Kos = Animator.StringToHash("Kos");
+    private static readonly int Saldir = Animator.StringToHash("Saldir");
+    private static readonly int Olmeanim = Animator.StringToHash("Ol");
 
     void Start()
     {
-        // Can baþlangýç deðeri
+        InitializeComponents();
+        CacheReferences();
+        SetupNavMeshAgent();
+    }
+
+    void Update()
+    {
+        if (oldu || sersemlemis) return;
+
+        if (!ValidateEssentialComponents()) return;
+
+        UpdateAIState();
+        UpdateAnimation();
+        UpdateSpriteDirection();
+    }
+
+    private void InitializeComponents()
+    {
         mevcutCan = maxCan;
 
-        // NavMeshAgent'i al ve kontrol et
         if (agent == null)
             agent = GetComponent<NavMeshAgent>();
 
-        if (agent != null)
-        {
-            // NavMeshAgent'i 2D için yapýlandýr
-            agent.updateRotation = false;
-            agent.updateUpAxis = false;
-
-            agent.speed = hareketHizi;
-            agent.acceleration = 8f;
-            agent.angularSpeed = 120f;
-
-            // Agent'ý NavMesh'e yerleþtir
-            NavMeshHit hit;
-            if (NavMesh.SamplePosition(transform.position, out hit, 10f, NavMesh.AllAreas))
-            {
-                transform.position = hit.position;
-                agent.enabled = true;
-            }
-            else
-            {
-                Debug.LogError(gameObject.name + " NavMesh üzerine yerleþtirilemedi!");
-            }
-        }
-        else
-        {
-            Debug.LogError(gameObject.name + " üzerinde NavMeshAgent componenti bulunamadý!");
-        }
-
-        // Animator yoksa bul
         if (animator == null)
             animator = GetComponent<Animator>();
 
-        // Oyuncu yoksa "Player" tag'i ile bul
         if (oyuncu == null)
         {
             GameObject oyuncuObj = GameObject.FindGameObjectWithTag("Player");
@@ -83,216 +82,252 @@ public class NPCAjanKontrol : MonoBehaviour
                 oyuncu = oyuncuObj.transform;
         }
 
-        // Baþlangýç pozisyonunu kaydet
         baslangicPozisyonu = transform.position;
     }
 
-    void Update()
+    private void CacheReferences()
     {
-        // Ölü veya sersemlemiþse hareketi engelle
-        if (oldu || sersemlemis)
+        spriteRenderer = GetComponent<SpriteRenderer>();
+        col = GetComponent<Collider2D>();
+
+        // Oyuncu saðlýk scriptini cache'le
+        if (oyuncu != null)
         {
-            if (agent != null && agent.isOnNavMesh)
+            Health = oyuncu.GetComponent<Health>();
+            if (Health == null)
             {
-                agent.isStopped = true;
-                agent.velocity = Vector3.zero;
+                Debug.LogWarning("Oyuncu üzerinde Health scripti bulunamadý!");
             }
-
-            if (animator != null && sersemlemis)
-            {
-                animator.SetBool("Kos", false);
-                animator.SetBool("Saldir", false);
-            }
-
-            return;
         }
+    }
 
-        // Temel kontroller
-        if (agent == null)
+    private void SetupNavMeshAgent()
+    {
+        if (agent == null) return;
+
+        agent.updateRotation = false;
+        agent.updateUpAxis = false;
+        agent.speed = hareketHizi;
+        agent.acceleration = 8f;
+        agent.angularSpeed = 120f;
+
+        NavMeshHit hit;
+        if (NavMesh.SamplePosition(transform.position, out hit, 10f, NavMesh.AllAreas))
         {
-            Debug.LogWarning("Agent bulunamadý!");
-            return;
+            transform.position = hit.position;
+            agent.enabled = true;
         }
-
-        if (!agent.isOnNavMesh)
+        else
         {
-            Debug.LogWarning("Agent NavMesh üzerinde deðil!");
-            return;
+            Debug.LogError(gameObject.name + " NavMesh üzerine yerleþtirilemedi!");
         }
+    }
 
-        if (oyuncu == null)
+    private bool ValidateEssentialComponents()
+    {
+        if (agent == null || !agent.isOnNavMesh || oyuncu == null)
         {
-            Debug.LogWarning("Oyuncu bulunamadý!");
-            return;
+            Debug.LogWarning("Temel componentler eksik!");
+            return false;
+        }
+        return true;
+    }
+
+    private void UpdateAIState()
+    {
+        float oyuncuyaMesafe = GetDistanceToPlayer();
+
+        // Ýlk baþlangýç kontrolü
+        HandleInitialPatrol();
+
+        // Oyuncu takip ve saldýrý durumu
+        if (oyuncuyaMesafe <= tetiklemeAlaniYaricap)
+        {
+            HandlePlayerInRange(oyuncuyaMesafe);
+        }
+        else
+        {
+            HandlePlayerOutOfRange();
         }
 
-        // DEBUG: Agent durumunu göster
-        Debug.Log($"Agent Speed: {agent.speed}, Velocity: {agent.velocity.magnitude}, isStopped: {agent.isStopped}");
+        HandlePatrolBehavior();
+    }
 
-        // Ýlk baþlangýçta devriye noktasýna git
+    private float GetDistanceToPlayer()
+    {
+        return Vector2.Distance(
+            new Vector2(transform.position.x, transform.position.y),
+            new Vector2(oyuncu.position.x, oyuncu.position.y)
+        );
+    }
+
+    private void HandleInitialPatrol()
+    {
         if (ilkBaslangic && devriyeNoktasi != null)
         {
             ilkBaslangic = false;
             devriyeNoktasinaGidiyor = true;
             agent.isStopped = false;
-            agent.speed = hareketHizi;
             agent.SetDestination(devriyeNoktasi.position);
-
-            Debug.Log("Ýlk baþlangýç: Devriye noktasýna gidiyor! Hedef: " + devriyeNoktasi.position);
         }
+    }
 
-        float oyuncuyaMesafe = Vector2.Distance(
-            new Vector2(transform.position.x, transform.position.y),
-            new Vector2(oyuncu.position.x, oyuncu.position.y)
-        );
+    private void HandlePlayerInRange(float distanceToPlayer)
+    {
+        devriyeNoktasinaGidiyor = false;
+        oyuncuAlaniIcinde = true;
 
-        // Oyuncu tetikleme alaný içinde mi kontrol et
-        if (oyuncuyaMesafe <= tetiklemeAlaniYaricap)
+        if (distanceToPlayer <= saldiriMesafesi)
         {
-            devriyeNoktasinaGidiyor = false;
-
-            if (!oyuncuAlaniIcinde)
-            {
-                oyuncuAlaniIcinde = true;
-            }
-
-            // Saldýrý mesafesinde mi kontrol et
-            if (oyuncuyaMesafe <= saldiriMesafesi)
-            {
-                // Saldýrý moduna geç
-                if (!saldiriyor)
-                {
-                    saldiriyor = true;
-                    agent.isStopped = true;
-
-                    if (animator != null)
-                    {
-                        animator.SetBool("Kos", false);
-                        animator.SetBool("Saldir", true);
-                    }
-                }
-            }
-            else
-            {
-                // Koþma modunda
-                if (saldiriyor)
-                {
-                    saldiriyor = false;
-                }
-
-                agent.isStopped = false;
-                agent.speed = hareketHizi;
-
-                if (agent.enabled && agent.isOnNavMesh)
-                {
-                    agent.SetDestination(oyuncu.position);
-                }
-            }
+            EnterAttackMode();
         }
         else
         {
-            // Oyuncu alandan çýktý
-            if (oyuncuAlaniIcinde)
+            EnterChaseMode();
+        }
+    }
+
+    private void HandlePlayerOutOfRange()
+    {
+        if (oyuncuAlaniIcinde)
+        {
+            oyuncuAlaniIcinde = false;
+            saldiriyor = false;
+
+            if (devriyeNoktasi != null)
             {
-                oyuncuAlaniIcinde = false;
-                saldiriyor = false;
-
-                // Devriye noktasýna git
-                if (devriyeNoktasi != null && agent.enabled && agent.isOnNavMesh)
-                {
-                    devriyeNoktasinaGidiyor = true;
-                    agent.isStopped = false;
-                    agent.speed = hareketHizi;
-                    agent.SetDestination(devriyeNoktasi.position);
-
-                    Debug.Log("Devriye noktasýna gidiyor! Hedef: " + devriyeNoktasi.position);
-                }
-            }
-
-            // Devriye noktasýna gidiyorsa ve ulaþtýysa
-            if (devriyeNoktasinaGidiyor && devriyeNoktasi != null)
-            {
-                float devriyeMesafe = Vector2.Distance(
-                    new Vector2(transform.position.x, transform.position.y),
-                    new Vector2(devriyeNoktasi.position.x, devriyeNoktasi.position.y)
-                );
-
-                if (devriyeMesafe <= devriyeNoktasiTolerans)
-                {
-                    devriyeNoktasinaGidiyor = false;
-                    agent.isStopped = true;
-
-                    Debug.Log("Devriye noktasýna ulaþtý!");
-                }
-                else
-                {
-                    agent.isStopped = false;
-                    agent.speed = hareketHizi;
-                }
-            }
-            else if (!devriyeNoktasinaGidiyor)
-            {
-                agent.isStopped = true;
+                ReturnToPatrol();
             }
         }
 
-        // HAREKET BAZLI ANÝMASYON
-        float currentSpeed = agent.velocity.magnitude;
-
-        if (animator != null)
+        if (!devriyeNoktasinaGidiyor)
         {
-            if (saldiriyor)
+            agent.isStopped = true;
+        }
+    }
+
+    private void HandlePatrolBehavior()
+    {
+        if (devriyeNoktasinaGidiyor && devriyeNoktasi != null)
+        {
+            float devriyeMesafe = Vector2.Distance(
+                new Vector2(transform.position.x, transform.position.y),
+                new Vector2(devriyeNoktasi.position.x, devriyeNoktasi.position.y)
+            );
+
+            if (devriyeMesafe <= devriyeNoktasiTolerans)
             {
-                animator.SetBool("Kos", false);
-                animator.SetBool("Saldir", true);
-            }
-            else if (currentSpeed > hareketEsikDegeri)
-            {
-                animator.SetBool("Saldir", false);
-                animator.SetBool("Kos", true);
+                devriyeNoktasinaGidiyor = false;
+                agent.isStopped = true;
             }
             else
             {
-                animator.SetBool("Kos", false);
-                animator.SetBool("Saldir", false);
+                agent.isStopped = false;
             }
         }
+    }
 
-        // 2D için sprite'ý çevir
+    private void EnterAttackMode()
+    {
+        if (!saldiriyor)
+        {
+            saldiriyor = true;
+            agent.isStopped = true;
+        }
+
+        // Saldýrý yap
+        if (saldiriYapabiliyor)
+        {
+            StartCoroutine(SaldiriYap());
+        }
+    }
+
+    private void EnterChaseMode()
+    {
+        saldiriyor = false;
+        agent.isStopped = false;
+        agent.SetDestination(oyuncu.position);
+    }
+
+    private void ReturnToPatrol()
+    {
+        devriyeNoktasinaGidiyor = true;
+        agent.isStopped = false;
+        agent.SetDestination(devriyeNoktasi.position);
+    }
+
+    private System.Collections.IEnumerator SaldiriYap()
+    {
+        saldiriYapabiliyor = false;
+
+        // Oyuncuya hasar ver
+        if (Health != null)
+        {
+            Health.TakeDamage();
+            Debug.Log($"Oyuncuya {saldiriHasari} hasar verildi!");
+        }
+
+        // Bekleme süresi
+        yield return new WaitForSeconds(saldiriBeklemeSuresi);
+        saldiriYapabiliyor = true;
+    }
+
+    private void UpdateAnimation()
+    {
+        if (animator == null) return;
+
+        float currentSpeed = agent.velocity.magnitude;
+
+        if (saldiriyor)
+        {
+            animator.SetBool(Kos, false);
+            animator.SetBool(Saldir, true);
+        }
+        else if (currentSpeed > hareketEsikDegeri)
+        {
+            animator.SetBool(Saldir, false);
+            animator.SetBool(Kos, true);
+        }
+        else
+        {
+            animator.SetBool(Kos, false);
+            animator.SetBool(Saldir, false);
+        }
+    }
+
+    private void UpdateSpriteDirection()
+    {
         if (agent.velocity.x > 0.1f)
             transform.localScale = new Vector3(1, 1, 1);
         else if (agent.velocity.x < -0.1f)
             transform.localScale = new Vector3(-1, 1, 1);
     }
 
-    // YENÝ: Balta çarpma kontrolü
     void OnCollisionEnter2D(Collision2D collision)
     {
-        // Balta objesi ile çarpýþma kontrolü
-        if (collision.gameObject.CompareTag("Balta") || collision.gameObject.name.Contains("Balta"))
-        {
-            HasarAl(baltaHasari);
-        }
+        HandleWeaponCollision(collision.gameObject);
     }
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        // Alternatif: Trigger bazlý çarpýþma
-        if (other.CompareTag("Balta") || other.name.Contains("Balta"))
+        HandleWeaponCollision(other.gameObject);
+    }
+
+    private void HandleWeaponCollision(GameObject collisionObject)
+    {
+        if (collisionObject.CompareTag("Balta") || collisionObject.name.Contains("Balta"))
         {
-            HasarAl(baltaHasari);
+            TakeDamage(baltaHasari);
         }
     }
 
-    // YENÝ: Hasar alma methodu
-    public void HasarAl(float hasar)
+    public void TakeDamage(float hasar)
     {
-        if (oldu) return; // Zaten ölüyse hasar alma
+        if (oldu) return;
 
         mevcutCan -= hasar;
         Debug.Log($"{gameObject.name} hasar aldý! Kalan can: {mevcutCan}");
 
-        // Can sýfýrlanýrsa öl
         if (mevcutCan <= 0)
         {
             mevcutCan = 0;
@@ -300,105 +335,81 @@ public class NPCAjanKontrol : MonoBehaviour
         }
         else
         {
-            // Hala canlýysa sersemlet (stun)
             StartCoroutine(SersemletmeEfekti());
         }
     }
 
-    // YENÝ: Sersemletme efekti (3 saniye hareket edememe)
     private IEnumerator SersemletmeEfekti()
     {
         sersemlemis = true;
-        Debug.Log($"{gameObject.name} sersemletildi! {stunSuresi} saniye hareket edemeyecek.");
 
-        // Agent'ý durdur
         if (agent != null && agent.isOnNavMesh)
         {
             agent.isStopped = true;
             agent.velocity = Vector3.zero;
         }
 
-        // Opsiyonel: Sersemletme animasyonu
         if (animator != null)
         {
-            animator.SetBool("Kos", false);
-            animator.SetBool("Saldir", false);
-            // animator.SetTrigger("Sersem"); // Eðer sersemletme animasyonunuz varsa
+            animator.SetBool(Kos, false);
+            animator.SetBool(Saldir, false);
         }
 
-        // Opsiyonel: Görsel efekt (renk deðiþimi)
-        SpriteRenderer sprite = GetComponent<SpriteRenderer>();
         Color originalColor = Color.white;
-        if (sprite != null)
+        if (spriteRenderer != null)
         {
-            originalColor = sprite.color;
-            sprite.color = Color.gray; // Gri renk vererek sersemletmeyi göster
+            originalColor = spriteRenderer.color;
+            spriteRenderer.color = Color.gray;
         }
 
-        // Belirlenen süre kadar bekle
         yield return new WaitForSeconds(stunSuresi);
 
-        // Sersemletmeyi kaldýr
         sersemlemis = false;
-        Debug.Log($"{gameObject.name} sersemletmeden kurtuldu!");
 
-        // Rengi eski haline getir
-        if (sprite != null)
+        if (spriteRenderer != null)
         {
-            sprite.color = originalColor;
+            spriteRenderer.color = originalColor;
         }
 
-        // Agent'ý yeniden aktif et
         if (agent != null && agent.isOnNavMesh)
         {
             agent.isStopped = false;
         }
     }
 
-    // YENÝ: Ölüm methodu
     private void Ol()
     {
         oldu = true;
-        Debug.Log($"{gameObject.name} öldü!");
 
-        // Agent'ý durdur
         if (agent != null && agent.isOnNavMesh)
         {
             agent.isStopped = true;
             agent.enabled = false;
         }
 
-        // Ölüm animasyonu
         if (animator != null)
         {
-            animator.SetBool("Kos", false);
-            animator.SetBool("Saldir", false);
-            animator.SetTrigger("Ol"); // Eðer ölüm animasyonunuz varsa
+            animator.SetBool(Kos, false);
+            animator.SetBool(Saldir, false);
+            animator.SetTrigger(Olmeanim);
         }
 
-        // Collider'ý kapat
-        Collider2D col = GetComponent<Collider2D>();
         if (col != null)
         {
             col.enabled = false;
         }
 
-        // 2 saniye sonra objeyi yok et (veya devre dýþý býrak)
         Destroy(gameObject, 2f);
     }
 
-    // Gizmos ile alanlarý görselleþtir
     void OnDrawGizmosSelected()
     {
-        // Tetikleme alaný
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, tetiklemeAlaniYaricap);
 
-        // Saldýrý mesafesi
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, saldiriMesafesi);
 
-        // Devriye noktasý
         if (devriyeNoktasi != null)
         {
             Gizmos.color = Color.green;
