@@ -8,9 +8,6 @@ public class NpcDiyalog : MonoBehaviour
     public TextMeshProUGUI diyalogText;
     public string[] diyalogLines;
     public string[] diyalogSeti1;
-    public string[] diyalogSeti2;
-    public string[] diyalogSeti3;
-    public string[] diyalogSeti4;
     private int index = 0;
     public float wordSpeed;
     private bool playerInRange;
@@ -22,7 +19,7 @@ public class NpcDiyalog : MonoBehaviour
     }
     private void Start()
     {
-        //diyalogLines = diyalogSeti1;
+        diyalogLines = diyalogSeti1;
     }
     private void Update()
     {
@@ -30,10 +27,9 @@ public class NpcDiyalog : MonoBehaviour
         {
             switch (GameManager.instance.diyalogSeviyesi)
             {
-                case 0: diyalogLines = diyalogSeti1; break;
-                case 1: diyalogLines = diyalogSeti2; break;
-                case 2: diyalogLines = diyalogSeti3; break;
-                case 3: diyalogLines = diyalogSeti4; break;
+                case 0:
+                    diyalogLines = diyalogSeti1;
+                    break;
             }
             if (diyalogPanel.activeInHierarchy)
             {
@@ -85,7 +81,7 @@ public class NpcDiyalog : MonoBehaviour
         Debug.Log("içine girdi");
         if (collision.CompareTag("Player"))
         {
-            playerInRange = true; 
+            playerInRange = true;
             ZeroText();
         }
     }
