@@ -12,7 +12,7 @@ EditorBuildSettings:
     path: Assets/Scenes/Harita.unity
     guid: c08c80fffcfe4854d8c038edb6a256c3
   - enabled: 1
-    path: Assets/Scenes/BossArena.unity
+    path: Assets/Scenes/BossArena1.unity
     guid: 14fccc1ddcfa16c46bf6cb6057af3a1b
   - enabled: 1
     path: Assets/Scenes/MehmetSahnesi.unity
