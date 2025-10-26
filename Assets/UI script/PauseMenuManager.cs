@@ -17,7 +17,6 @@ public class PauseMenuManager : MonoBehaviour
     void Start()
     {
         // Kaydedilmiþ ses durumunu yükle
-        isMuted = PlayerPrefs.GetInt("IsMuted", 0) == 1;
         ApplyMuteToAudioSources();
         UpdateSoundIcon();
     }
