@@ -6,7 +6,7 @@ public class dead : MonoBehaviour
    public void Die()
     {
         // Oyuncu öldüðünde ana menü sahnesine yönlendir
-        SceneManager.LoadScene(1); // Buraya kendi ana menü sahnenin adýný yaz
+        SceneManager.LoadScene("Harita"); // Buraya kendi ana menü sahnenin adýný yaz
     }
     void Start()
     {

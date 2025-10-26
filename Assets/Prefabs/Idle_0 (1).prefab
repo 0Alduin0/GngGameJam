@@ -78,7 +78,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 11
+  m_SortingOrder: 1
   m_Sprite: {fileID: 4723107735738678597, guid: 645a4b7415d66b24a9ac564a9339dab3, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -120,7 +120,7 @@ NavMeshAgent:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 590526778233274452}
   m_Enabled: 1
-  m_AgentTypeID: 1479372276
+  m_AgentTypeID: 0
   m_Radius: 0.155
   m_Speed: 3.5
   m_Acceleration: 8
@@ -151,3 +151,12 @@ MonoBehaviour:
   agent: {fileID: 907076580426858227}
   tetiklemeAlaniYaricap: 10
   saldiriMesafesi: 2
+  devriyeNoktasi: {fileID: 0}
+  devriyeNoktasiTolerans: 0.5
+  hareketHizi: 3.5
+  hareketEsikDegeri: 0.1
+  maxCan: 100
+  baltaHasari: 20
+  stunSuresi: 3
+  saldiriHasari: 10
+  saldiriBeklemeSuresi: 1.5
