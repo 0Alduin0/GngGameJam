@@ -47,6 +47,8 @@ public class NPCAjanKontrol : MonoBehaviour
     private static readonly int Saldir = Animator.StringToHash("Saldir");
     private static readonly int Olmeanim = Animator.StringToHash("Ol");
 
+    public int kacýncýboss;
+
     void Start()
     {
         InitializeComponents();
@@ -332,6 +334,21 @@ public class NPCAjanKontrol : MonoBehaviour
         {
             mevcutCan = 0;
             Ol();
+            if (kacýncýboss == 1)
+            {
+                GameManager.instance.ilkBossOldumu = true;
+                GameManager.instance.KoyluBilgi1();
+            }
+            if (kacýncýboss == 2)
+            {
+                GameManager.instance.ikinciBossOldumu = true;
+                GameManager.instance.KoyluBilgi2();
+            }
+            if (kacýncýboss == 3)
+            {
+                GameManager.instance.ucuncuBossOldumu = true;
+                GameManager.instance.KoyluBilgi3();
+            }
         }
         else
         {

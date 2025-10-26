@@ -267,10 +267,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: Idle_0 (1)
       objectReference: {fileID: 0}
-    - target: {fileID: 907076580426858227, guid: 4c00c6fca3d0fd941879396e0251a17c, type: 3}
-      propertyPath: m_AgentTypeID
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 2137078490201612485, guid: 4c00c6fca3d0fd941879396e0251a17c, type: 3}
       propertyPath: oyuncu
       value: 
@@ -314,10 +310,6 @@ PrefabInstance:
     - target: {fileID: 2695783870258351217, guid: 4c00c6fca3d0fd941879396e0251a17c, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3354020120203545570, guid: 4c00c6fca3d0fd941879396e0251a17c, type: 3}
-      propertyPath: m_SortingOrder
-      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
