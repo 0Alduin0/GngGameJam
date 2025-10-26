@@ -19,7 +19,7 @@ public class Boss1 : MonoBehaviour
     public void OnYesPressed()
     {
         Time.timeScale = 1f;
-        SceneManager.LoadScene("BossArena");
+        SceneManager.LoadScene("BossArena1");
     }
 
     public void OnNoPressed()

@@ -908,9 +908,11 @@ MonoBehaviour:
   hareketHizi: 1.89
   hareketEsikDegeri: 0.1
   maxCan: 100
-  mevcutCan: 0
   baltaHasari: 20
   stunSuresi: 3
+  saldiriHasari: 10
+  saldiriBeklemeSuresi: 1.5
+  "kac\u0131nc\u0131boss": 1
 --- !u!195 &1316035439
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -971,7 +973,7 @@ PolygonCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 0.42, y: 0.76}
+    oldSize: {x: 0.58, y: 0.93}
     newSize: {x: 0.58, y: 0.93}
     adaptiveTilingThreshold: 0.5
     drawMode: 0

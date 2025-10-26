@@ -3,7 +3,7 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerMovement : MonoBehaviour
 {
-    public float moveSpeed = 5f;
+    public float moveSpeed = 3f;
 
     private Rigidbody2D rb;
 
@@ -13,7 +13,7 @@ public class PlayerMovement : MonoBehaviour
 
     public float nextAttackTime = 0.7f;
 
-    public int axeCount = 5;
+    public int axeCount = 20;
     public GameObject axePrefab;
     public GameObject axeSpawnPoint;
     public float nextThrowAxe = 1.5f;

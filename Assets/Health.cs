@@ -10,7 +10,7 @@ public class Health : MonoBehaviour
 
     public void TakeDamage()
     {
-        health -= 20;
+        health -= 5;
         healthBar.fillAmount = health / 100f;
         if (health < 0)
         {
