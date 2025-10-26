@@ -22,7 +22,7 @@ public class NpcDiyalog : MonoBehaviour
     }
     private void Start()
     {
-        diyalogLines = diyalogSeti1;
+        //diyalogLines = diyalogSeti1;
     }
     private void Update()
     {
@@ -85,7 +85,8 @@ public class NpcDiyalog : MonoBehaviour
         Debug.Log("içine girdi");
         if (collision.CompareTag("Player"))
         {
-            playerInRange = true; ZeroText();
+            playerInRange = true; 
+            ZeroText();
         }
     }
     private void OnTriggerExit2D(Collider2D collision)

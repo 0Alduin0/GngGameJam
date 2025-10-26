@@ -173,20 +173,9 @@ MonoBehaviour:
   diyalogPanel: {fileID: 0}
   diyalogText: {fileID: 0}
   diyalogLines: []
-  diyalogSeti1:
-  - "Oooo, Bakiyorumda gurbetten sonunda d\xF6nm\xFCsss\xFCn."
-  - Sen yokken buralarda cok sey degisti.
-  - 3 (aile ismi) koyu ellerine gecirdi. Butun aletlerimize ve mal varligimiza el
-    koydular.
-  - Yillardir bu kolelik sistemiyle yasiyoruz. Bu koye yeni bir duzen getirebilecek
-    tek kisi sensin.
-  - Nolur bizi bu sarlatanlardan kurtar.
-  diyalogSeti2:
-  - Burasi ailenin en kucuk kardesi olan deli mehmetin evi. Tum hurdalarimiza bizzat
-    kendisi el koydu.
-  - "Onu yenerek koyumuz icin gerekli hurdalar\u0131 al"
-  diyalogSeti3:
-  - Burasi ortanca kardes olan psikopat davutun evi
+  diyalogSeti1: []
+  diyalogSeti2: []
+  diyalogSeti3: []
   diyalogSeti4: []
   wordSpeed: 0.04
   continueButton: {fileID: 0}
